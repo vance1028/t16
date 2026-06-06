@@ -85,11 +85,16 @@ router.get('/recent-warnings', authenticateToken, async (req: AuthRequest, res: 
 
 router.get('/mining-area-completion', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const tasks = await InspectionTask.findAll({
+    const records = await InspectionRecord.findAll({
       include: [
         {
+          model: InspectionTask,
+          as: 'task',
+          attributes: ['status']
+        },
+        {
           model: HazardPoint,
-          as: 'hazardPoints',
+          as: 'hazardPoint',
           attributes: ['miningArea']
         }
       ]
@@ -97,27 +102,36 @@ router.get('/mining-area-completion', authenticateToken, async (req: AuthRequest
 
     const areaStats: Record<string, { total: number; completed: number }> = {};
 
-    for (const task of tasks) {
-      const hazardPoints = await HazardPoint.findAll({
-        where: { id: { [Op.in]: (task as any).hazardPointIds } }
-      });
+    for (const record of records) {
+      const point = (record as any).hazardPoint;
+      if (!point || !point.miningArea) continue;
+      
+      const area = point.miningArea;
+      if (!areaStats[area]) {
+        areaStats[area] = { total: 0, completed: 0 };
+      }
+      areaStats[area].total++;
+      if ((record as any).task?.status === 'completed') {
+        areaStats[area].completed++;
+      }
+    }
 
-      for (const point of hazardPoints) {
-        if (!areaStats[point.miningArea]) {
-          areaStats[point.miningArea] = { total: 0, completed: 0 };
-        }
-        areaStats[point.miningArea].total++;
-        if (task.status === 'completed') {
-          areaStats[point.miningArea].completed++;
-        }
+    const allPoints = await HazardPoint.findAll({
+      attributes: ['miningArea']
+    });
+
+    for (const point of allPoints) {
+      const area = point.miningArea;
+      if (!areaStats[area]) {
+        areaStats[area] = { total: 0, completed: 0 };
       }
     }
 
     const result = Object.entries(areaStats).map(([area, stats]) => ({
       miningArea: area,
-      total: stats.total,
+      total: stats.total || 1,
       completed: stats.completed,
-      completionRate: stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0
+      completionRate: (stats.total || 1) > 0 ? Math.round((stats.completed / (stats.total || 1)) * 100) : 0
     }));
 
     res.json(result);

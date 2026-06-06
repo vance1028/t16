@@ -87,7 +87,7 @@ export interface InspectionRecord {
 }
 
 export type WarningStatus = 'pending' | 'confirmed' | 'responding' | 'closed';
-export type ResponseAction = 'evacuation' | 'road_closure' | '警戒_set' | 'other';
+export type ResponseAction = 'evacuation' | 'road_closure' | 'warning_set' | 'other';
 
 export interface Warning {
   id: number;
@@ -190,7 +190,7 @@ export const WarningStatusColors: Record<WarningStatus, string> = {
 export const ResponseActionLabels: Record<ResponseAction, string> = {
   evacuation: '通知撤离',
   road_closure: '封路',
-  警戒_set: '设警戒',
+  warning_set: '设警戒',
   other: '其他措施'
 };
 

@@ -83,7 +83,7 @@
           <a-checkbox-group v-model:value="responseForm.responseActions">
             <a-checkbox value="evacuation">通知撤离</a-checkbox>
             <a-checkbox value="road_closure">封路</a-checkbox>
-            <a-checkbox value="警戒_set">设警戒</a-checkbox>
+            <a-checkbox value="warning_set">设警戒</a-checkbox>
             <a-checkbox value="other">其他措施</a-checkbox>
           </a-checkbox-group>
         </a-form-item>

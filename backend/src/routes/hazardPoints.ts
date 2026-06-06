@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { HazardPoint, RiskLevelLog } from '../models';
+import { HazardPoint, RiskLevelLog, User } from '../models';
 import { authenticateToken, requireRoles, AuthRequest } from '../middleware/auth';
 import { Op } from 'sequelize';
 
@@ -33,7 +33,7 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
         {
           model: RiskLevelLog,
           as: 'riskLevelLogs',
-          include: [{ model: require('../models').default.User, as: 'operator', attributes: ['id', 'name'] }],
+          include: [{ model: User, as: 'operator', attributes: ['id', 'name'] }],
           order: [['createdAt', 'DESC']],
           limit: 10
         }
