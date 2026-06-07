@@ -216,10 +216,15 @@
         <a-form-item label="照片上传">
           <a-upload
             list-type="picture-card"
-            :file-list="recordForm.photos.map((url, i) => ({ uid: i, url, name: `照片${i+1}` }))"
+            :file-list="photoFileList"
+            :custom-request="handleCustomUpload"
             @preview="handlePreview"
+            @remove="handleRemovePhoto"
           >
-            <PlusOutlined />
+            <div>
+              <PlusOutlined />
+              <div style="margin-top: 8px">上传照片</div>
+            </div>
           </a-upload>
         </a-form-item>
         <a-form-item label="是否触发升级">
@@ -299,6 +304,18 @@
               {{ result.item }}: {{ result.value }}
             </a-tag>
           </div>
+          <div v-if="record.photos && record.photos.length > 0" style="margin-top: 8px">
+            <p style="margin-bottom: 4px; color: #666">巡查照片:</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px">
+              <img
+                v-for="(photo, idx) in record.photos"
+                :key="idx"
+                :src="photo"
+                style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px; cursor: pointer"
+                @click="previewImage = photo; previewVisible = true"
+              />
+            </div>
+          </div>
           <p v-if="record.triggeredUpgrade" style="color: #f5222d">
             ⚠️ 本次巡查触发风险等级升级
           </p>
@@ -306,12 +323,25 @@
       </a-timeline>
       <a-empty v-else description="暂无巡查记录" />
     </a-drawer>
+
+    <a-modal
+      v-model:open="previewVisible"
+      title="照片预览"
+      :footer="null"
+      width="600px"
+    >
+      <img
+        v-if="previewImage"
+        :src="previewImage"
+        style="width: 100%; height: auto; display: block"
+      />
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { message } from 'ant-design-vue';
+import { message, Modal } from 'ant-design-vue';
 import {
   PlusOutlined,
   DeleteOutlined
@@ -325,7 +355,8 @@ import {
   startTask,
   submitRecord,
   getInspectionTask,
-  getTaskRecords
+  getTaskRecords,
+  uploadPhoto
 } from '@/api/inspectionTasks';
 import { getHazardPoints } from '@/api/hazardPoints';
 import { getInspectors } from '@/api/users';
@@ -335,6 +366,7 @@ import {
   TaskStatusColors
 } from '@/types';
 import type { ColumnType } from 'ant-design-vue/es/table';
+import type { UploadProps, UploadFile } from 'ant-design-vue/es/upload/interface';
 
 const userStore = useUserStore();
 const isAdmin = computed(() => userStore.userRole === 'admin');
@@ -363,6 +395,9 @@ const recordForm = ref({
   weatherCondition: '',
   triggeredUpgrade: false
 });
+const photoFileList = ref<UploadFile[]>([]);
+const previewVisible = ref(false);
+const previewImage = ref('');
 
 const detailVisible = ref(false);
 const records = ref<any[]>([]);
@@ -471,10 +506,44 @@ const showSubmitModal = async (record: InspectionTask) => {
       weatherCondition: '',
       triggeredUpgrade: false
     };
+    photoFileList.value = [];
     submitVisible.value = true;
   } catch (error) {
     console.error('加载任务详情失败:', error);
   }
+};
+
+const handleCustomUpload: UploadProps['customRequest'] = async (options) => {
+  const { file, onSuccess, onError } = options;
+  try {
+    const result = await uploadPhoto(file as File);
+    const uploadFile: UploadFile = {
+      uid: Date.now().toString(),
+      name: file.name,
+      status: 'done',
+      url: result.url,
+      response: result
+    };
+    photoFileList.value = [...photoFileList.value, uploadFile];
+    recordForm.value.photos = photoFileList.value.map(f => f.url!);
+    onSuccess?.(result, file as File);
+    message.success('照片上传成功');
+  } catch (error) {
+    console.error('上传失败:', error);
+    onError?.(error as Error);
+    message.error('照片上传失败');
+  }
+};
+
+const handleRemovePhoto = (file: UploadFile) => {
+  photoFileList.value = photoFileList.value.filter(f => f.uid !== file.uid);
+  recordForm.value.photos = photoFileList.value.map(f => f.url!);
+  return true;
+};
+
+const handlePreview = (file: UploadFile) => {
+  previewImage.value = file.url || '';
+  previewVisible.value = true;
 };
 
 const addCheckItem = () => {
@@ -513,8 +582,6 @@ const viewDetail = async (record: InspectionTask) => {
   }
   detailVisible.value = true;
 };
-
-const handlePreview = () => {};
 
 onMounted(() => {
   loadData();

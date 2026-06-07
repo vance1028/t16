@@ -42,3 +42,13 @@ export const submitRecord = (id: number, data: SubmitRecordParams): Promise<Insp
 export const getTaskRecords = (id: number): Promise<InspectionRecord[]> => {
   return request.get(`/inspection-tasks/${id}/records`);
 };
+
+export const uploadPhoto = (file: File): Promise<{ url: string; filename: string }> => {
+  const formData = new FormData();
+  formData.append('photo', file);
+  return request.post('/inspection-tasks/upload-photo', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+};
